@@ -3,7 +3,7 @@ import logging
 
 from threading import Thread
 
-from .utils import get_args, get_outer_square, get_pokemon_name, format_time_left
+from .utils import get_args, get_outer_square, get_pokemon_name, format_time_left, get_distance
 from .models import User, UserAlert, Location
 
 log = logging.getLogger(__name__)
@@ -20,9 +20,6 @@ class UpdateThread(Thread):
                 # Loop the queue
                 while True:
                     message_type, message = self.queue.get()
-                    
-                    log.info('New message!')
-                    log.info(message)
                     
                     if message_type == 'pokemon':
                         if ('pokemon_id' not in message or
@@ -53,43 +50,88 @@ class UpdateThread(Thread):
         finally:
             self.app.seen_lock.release()
         
-        dissapear_time = datetime.utcfromtimestamp(message['disappear_time'])      
+        disappear_time = datetime.utcfromtimestamp(message['disappear_time'])      
         pokemon_id = message['pokemon_id']
         latitude = message['latitude']
         longitude = message['longitude']
-        
-        box = get_outer_square((latitude, longitude), 70)
-        
-        query = (User
-                 .select(User)
-                 #.join(UserAlert)
-                 .where(
-                    (User.enabled == True) &
-                    #(UserAlert.pokemon_id == pokemon_id) &
-                    ((User.latitude >= box['min_latitude']) &
-                     (User.latitude <= box['max_latitude']) &
-                     (User.longitude >= box['min_longitude']) &
-                     (User.longitude <= box['max_longitude']))))
+                   
+        seconds_left = (disappear_time - datetime.utcnow()).total_seconds()
                 
-        chats = [user.chat_id for user in query]
-        
-        if len(chats) == 0:
-            print 'No users found.'
-            print box
-            
-        seconds_left = (dissapear_time - datetime.utcnow()).total_seconds()
+        if seconds_left <= 30:
+            return
 
         location, created = Location.get_or_create(latitude=latitude, longitude=longitude)
 
-        alarm = {
-            'title': '%s apareceu! (%s restantes)' % (get_pokemon_name(pokemon_id), format_time_left(seconds_left)),
-            'address': '%f, %f' % (latitude, longitude),
+        pokemon_event = {
+            'pokemon_id': pokemon_id,
+            'pokemon_name': get_pokemon_name(pokemon_id),
+            'disappear_time': disappear_time,
+            'time_left': format_time_left(seconds_left),
             'latitude': latitude,
             'longitude': longitude,
         }
         
         if location.resolved == True:
-            alarm['address'] = '%s, %s' % (location.street_name, location.street_number)
+            pokemon_event['address'] = '%s, %s' % (location.street_name, location.street_number)
+            pokemon_event['sublocality'] = location.sublocality
+            pokemon_event['locality'] = location.locality
+       
+        self.process_pokemon_event(**pokemon_event)
         
-        self.app.alarm_queue.put((chats, alarm))
+    def process_pokemon_event(self, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
+        box = get_outer_square((latitude, longitude), 200)
         
+        query = (User
+                 .select(User)
+                 .join(UserAlert)
+                 .where(
+                    (User.enabled == True) &
+                    (UserAlert.pokemon_id == pokemon_id) &
+                    ((User.latitude >= box['min_latitude']) &
+                     (User.latitude <= box['max_latitude']) &
+                     (User.longitude >= box['min_longitude']) &
+                     (User.longitude <= box['max_longitude']))))
+        
+        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 200]
+        
+        
+        if len(chats) > 0:
+            args = {
+                'text': '<b>{} encontrado!</b>\n{} restantes.'.format(pokemon_name, time_left),
+                'parse_mode': 'HTML'
+            }
+            
+            self.app.alarm_queue.put((chats, 'sendMessage', args))
+        
+            args = {
+                'title': pokemon_name,
+                'address': address or '',
+                'latitude': latitude,
+                'longitude': longitude,
+                'disable_notification': 'True'
+            }
+            
+            self.app.alarm_queue.put((chats, 'sendVenue', args))
+        
+        box = get_outer_square((latitude, longitude), 70)
+        
+        query = (User
+                 .select(User)
+                 .where(
+                    (User.enabled == True) &
+                    (User.report_catchable == True) &
+                    ((User.latitude >= box['min_latitude']) &
+                     (User.latitude <= box['max_latitude']) &
+                     (User.longitude >= box['min_longitude']) &
+                     (User.longitude <= box['max_longitude']))))
+                     
+        
+        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 70]
+        
+        if len(chats) > 0:
+            args = {
+                'text': '<b>{} bem do seu lado!</b>\n{} restantes.'.format(pokemon_name, time_left),
+                'parse_mode': 'HTML'
+            }
+            
+            self.app.alarm_queue.put((chats, 'sendMessage', args))
