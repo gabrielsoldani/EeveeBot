@@ -37,12 +37,12 @@ class EeveeBot(Flask):
         print 'Received update!'
     
     def test(self):
-        import datetime
+        import uuid
         import time
             
         message = {
-            'encounter_id': 'encounter_id',
-            'pokemon_id': 132,
+            'encounter_id': uuid.uuid4(),
+            'pokemon_id': 149,
             'latitude': -22.931950,
             'longitude': -43.247290,
             'disappear_time': time.time() + 60+42

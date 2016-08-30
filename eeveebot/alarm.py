@@ -5,6 +5,7 @@ from threading import Thread
 
 from .utils import get_args
 import telepot
+from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton
 
 log = logging.getLogger(__name__)
 

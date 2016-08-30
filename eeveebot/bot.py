@@ -40,9 +40,12 @@ class BotThread(Thread):
         
         user, created = User.get_or_create(chat_id=chat_id)
         
+        if created == True:
+            self.add_default_pokemon(user)
+        
         if 'text' in message:
             if message['text'] == '/enable':
-                user.enabled = False
+                user.enabled = True
                 user.save()
                 self.telegram_bot.sendMessage(chat_id, 'Notificações ativadas. Envie sua localização.', reply_markup=markup_location)
             elif message['text'] == '/disable':
@@ -54,9 +57,18 @@ class BotThread(Thread):
                 user.save()
                 
                 if user.report_catchable:
-                    self.telegram_bot.sendMessage(chat_id, 'Você só será notificado de Pokémon na sua lista.')
-                else:
                     self.telegram_bot.sendMessage(chat_id, 'Você será notificado de todos os Pokémon próximos.')
+                else:
+                    self.telegram_bot.sendMessage(chat_id, 'Você só será notificado dos Pokemón na sua lista.')
+            elif message['text'] == '/start':
+                text = 'Olá. Eu sou o Eevee Robot, e eu posso te avisar se eu vir algum Pokémon raro.\n\n'
+                text += 'Para começar a receber notificações, basta usar o comando /enable e, em seguida, enviar a sua localização.\n\n'
+                text += 'Você pode ver os Pokémons que eu vou te alertar usando o comando /list, e você pode modificar essa lista usando os comandos /add e /del.\n\n'
+                text += 'Ah, e eu também posso te alertar se tiver algum Pokémon bem do seu ladinho, pra você não precisar ficar com o jogo aberto. É só usar o comando /catchable.\n\n'
+                text += 'Qualquer dúvida você pode usar o comando /help para saber mais sobre os comandos.\n\n'
+                text += 'Ao trabalho!'
+                
+                self.telegram_bot.sendMessage(chat_id, text)
             elif message['text'] == '/list':
                 text = ''
                 
@@ -102,7 +114,11 @@ class BotThread(Thread):
                     if arg != None and arg != '':
                         text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
                     else:
-                        text = 'Comando inválido.'
+                        text = 'Comando inválido.\n\n'
+                        text += 'Uso:\n'
+                        text += '/del <nome ou #>\n\n'
+                        text += 'Exemplo:\n'
+                        text += '/del Bulbasaur'
                         
                 self.telegram_bot.sendMessage(chat_id, text)
             elif message['text'][:4] == '/del':
@@ -133,20 +149,25 @@ class BotThread(Thread):
                     if arg != None and arg != '':
                         text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
                     else:
-                        text = 'Comando inválido.'
+                        text = 'Comando inválido.\n\n'
+                        text += 'Uso:\n'
+                        text += '/add <nome ou #>\n\n'
+                        text += 'Exemplo:\n'
+                        text += '/add Bulbasaur'
                     
                 self.telegram_bot.sendMessage(chat_id, text)
             else:
                 text = ''
                 if message['text'] != '/help':
                     text += 'Comando não reconhecido.\n\n'
-                text += '**Comandos disponívels**\n\n'
-                text += '/enable : Ativar notificações.\n'
-                text += '/disable : Desativar notificações.\n'
-                text += '/list : Pokémons ativados.\n'
-                text += '/add <nome> : Adicionar Pokémon.\n'
-                text += '/del <nome> : Remover Pokémon.\n'
-                text += '/help : Mostra essa mensagem.'
+                text += '**Comandos disponíveis**\n\n'
+                text += '/help - mostrar essa mensagem de ajuda\n'
+                text += '/enable - ativar notificações\n'
+                text += '/disable - desativar notificações\n'
+                text += '/list - mostrar pokémons\n'
+                text += '/add <nome ou #> - adicionar pokémon\n'
+                text += '/del <nome ou #> - remover pokémon\n'
+                text += '/catchable - ativar/desativar notificações de todos os pokémons alcançáveis\n'
                 
                 self.telegram_bot.sendMessage(chat_id, text, parse_mode='Markdown')
         
@@ -163,3 +184,88 @@ class BotThread(Thread):
             user.save()
             
             self.telegram_bot.sendMessage(chat_id, text, reply_markup=markup_location)
+            
+    def add_default_pokemon(self, user):
+        default_pokemon = [
+            2, # Ivysaur
+            3, # Venusaur
+            5, # Charmeleon
+            6, # Charizard
+            8, # Wartortle
+            9, # Blastoise
+            12, # Butterfree
+            15, # Beedril
+            18, # Pidgeot
+            22, # Fearow
+            24, # Arbok
+            26, # Raichu
+            28, # Sandslash
+            31, # Nidoqueen
+            34, # Nidoking
+            36, # Clefable
+            38, # Ninetales
+            40, # Wigglytuff
+            44, # Gloom
+            45, # Vileplume
+            47, # Parasect
+            49, # Venomoth
+            51, # Dugtrio
+            53, # Persian
+            57, # Primeape
+            59, # Arcanine
+            62, # Poliwrath
+            64, # Kadabra
+            65, # Alakazam
+            67, # Machoke
+            68, # Machamp
+            70, # Weepinbell
+            71, # Victreebel
+            75, # Graveler
+            76, # Golem
+            78, # Rapidash
+            80, # Slowbro
+            82, # Magneton
+            87, # Dewgong
+            88, # Grimer
+            89, # Muk
+            91, # Cloyster
+            93, # Haunter
+            94, # Gengar
+            95, # Onix
+            97, # Hypno
+            99, # Kingler
+            101, # Electrode
+            103, # Exeggutor
+            105, # Marowak
+            106, # Hitmonlee
+            107, # Hitmonchan
+            108, # Lickitung
+            110, # Weezing
+            112, # Rhydon
+            113, # Chansey
+            117, # Seadra
+            121, # Starmie
+            123, # Scyther
+            124, # Jynx
+            125, # Electabuzz
+            126, # Magmar
+            130, # Gyarados
+            131, # Lapras
+            134, # Vaporeon
+            135, # Jolteon
+            136, # Flareon
+            137, # Porygon
+            139, # Omastar
+            141, # Kabutops
+            142, # Aerodactyl
+            143, # Snorlax
+            148, # Dragonair
+            149 # Dragonite
+        ]
+        
+        values = [{'user': user, 'pokemon_id': id} for id in default_pokemon]
+        
+        query = (UserAlert
+                .insert_many(values))
+        
+        query.execute()
