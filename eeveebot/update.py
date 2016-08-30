@@ -8,6 +8,8 @@ from .models import User, UserAlert, Location
 
 log = logging.getLogger(__name__)
 
+args = get_args()
+
 class UpdateThread(Thread):
     def __init__(self, app):
         super(UpdateThread, self).__init__()
@@ -93,7 +95,14 @@ class UpdateThread(Thread):
        
         self.process_pokemon_event(**pokemon_event)
         
-    def process_pokemon_event(self, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
+    def process_pokemon_event(self, **kwargs):
+        kwargs['dont'] = set()
+        self.process_channel_pokemon(**kwargs)
+        
+        kwargs['dont'] = self.process_catchable_pokemon(**kwargs)
+        kwargs['dont'] = self.process_nearby_pokemon(**kwargs)
+
+    def process_catchable_pokemon(self, dont, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
         box = get_outer_square((latitude, longitude), 70)
         
         query = (User
@@ -107,28 +116,32 @@ class UpdateThread(Thread):
                      (User.longitude <= box['max_longitude']))))
                      
         
-        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 70]
+        chats = set(user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 70)
+        chats -= dont
         
-        chats_catchable = chats
+        if len(chats) == 0:
+            return set()
+            
+        targs = {
+            'text': '<b>{} bem do seu lado!</b>\n{} restantes.'.format(pokemon_name, time_left),
+            'parse_mode': 'HTML'
+        }
+            
+        self.app.alarm_queue.put((chats, 'sendMessage', targs))
         
-        if len(chats) > 0:
-            args = {
-                'text': '<b>{} bem do seu lado!</b>\n{} restantes.'.format(pokemon_name, time_left),
-                'parse_mode': 'HTML'
-            }
-            
-            self.app.alarm_queue.put((chats, 'sendMessage', args))
-            
-            args = {
-                'title': pokemon_name,
-                'address': address or '',
-                'latitude': latitude,
-                'longitude': longitude,
-                'disable_notification': 'True'
-            }
-            
-            self.app.alarm_queue.put((chats, 'sendVenue', args))
-    
+        targs = {
+            'title': pokemon_name,
+            'address': address or '',
+            'latitude': latitude,
+            'longitude': longitude,
+            'disable_notification': 'True'
+        }
+        
+        self.app.alarm_queue.put((chats, 'sendVenue', targs))
+        
+        return chats
+        
+    def process_nearby_pokemon(self, dont, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
         box = get_outer_square((latitude, longitude), 200)
         
         query = (User
@@ -142,24 +155,57 @@ class UpdateThread(Thread):
                      (User.longitude >= box['min_longitude']) &
                      (User.longitude <= box['max_longitude']))))
         
-        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 200]
+        chats = set(user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 200)
+        chats -= dont
         
-        chats = [x for x in chats if x not in chats_catchable]
+        if len(chats) == 0:
+            return chats
         
-        if len(chats) > 0:
-            args = {
-                'text': '<b>{} encontrado!</b>\n{} restantes.'.format(pokemon_name, time_left),
-                'parse_mode': 'HTML'
-            }
+        targs = {
+            'text': '<b>{} encontrado!</b>\n{} restantes.'.format(pokemon_name, time_left),
+            'parse_mode': 'HTML'
+        }
+        
+        self.app.alarm_queue.put((chats, 'sendMessage', targs))
+    
+        targs = {
+            'title': pokemon_name,
+            'address': address or '',
+            'latitude': latitude,
+            'longitude': longitude,
+            'disable_notification': 'True'
+        }
+        
+        self.app.alarm_queue.put((chats, 'sendVenue', targs))
             
-            self.app.alarm_queue.put((chats, 'sendMessage', args))
-        
-            args = {
-                'title': pokemon_name,
-                'address': address or '',
-                'latitude': latitude,
-                'longitude': longitude,
-                'disable_notification': 'True'
-            }
+    def process_channel_pokemon(self, dont, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
+        if args.telegram_channel == None or pokemon_id not in args.channel_pokemon:
+            return set()
             
-            self.app.alarm_queue.put((chats, 'sendVenue', args))
+        chats = set([args.telegram_channel])
+        chats -= dont
+            
+        if sublocality != None:
+            text = '<b>{} encontrado em {}!</b>\n'.format(pokemon_name, sublocality)
+        else:
+            text = '<b>{} encontrado!</b>\n'.format(pokemon_name)
+        text += '{} restantes'.format(time_left)
+        
+        targs = {
+            'text': text,
+            'parse_mode': 'HTML',
+            'reply_markup': None
+        }
+        self.app.alarm_queue.put((chats, 'sendMessage', targs))
+        
+        targs = {
+            'title': pokemon_name,
+            'address': address or '',
+            'latitude': latitude,
+            'longitude': longitude,
+            'disable_notification': 'True'
+        }
+        
+        self.app.alarm_queue.put((chats, 'sendVenue', targs))
+        
+        return chats

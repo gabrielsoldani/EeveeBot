@@ -38,8 +38,12 @@ def get_args():
                         help='Telegram Key')
     parser.add_argument('-gk', '--gmaps-key',
                         help='Google Maps Geocode API Server Key')
+    parser.add_argument('-tc', '--telegram-channel',
+                        help='Telegram Channel name')
     parser.add_argument('-dp', '--default-pokemon', action='append',
                         help='Default Pokémon')
+    parser.add_argument('-cp', '--channel-pokemon', action='append',
+                        help='List of Pokémon to announce to the channel.')
     parser.add_argument('-H', '--host', default='127.0.0.1',
                         help='Set web server listening host')
     parser.add_argument('-P', '--port', type=int, default=4000,
@@ -68,6 +72,9 @@ def get_args():
     
     args = parser.parse_args()
     
+    if args.default_pokemon == None:
+        args.default_pokemon = []
+        
     default_pokemon = set()
     for pokemon in args.default_pokemon:
         pokemon_id = get_pokemon(pokemon)
@@ -76,8 +83,21 @@ def get_args():
             log.error('Unrecognized Pokémon %s', pokemon)
         else:
             default_pokemon.add(pokemon_id)
-    
     args.default_pokemon = default_pokemon
+    
+    if args.channel_pokemon != None:
+        channel_pokemon = set()
+        for pokemon in args.channel_pokemon:
+            pokemon_id = get_pokemon(pokemon)
+            
+            if pokemon_id == None:
+                log.error('Unrecognized Pokémon %s', pokemon)
+            else:
+                channel_pokemon.add(pokemon_id)
+        args.channel_pokemon = channel_pokemon
+    
+    if args.telegram_channel[:1] != '@':
+        args.telegram_channel = '@' + args.telegram_channel
     
     return args
     
