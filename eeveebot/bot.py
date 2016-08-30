@@ -18,6 +18,23 @@ class BotThread(Thread):
         self.app = app
         self.telegram_bot = telepot.Bot(args.telegram_key)
         
+        self.routes = {
+            '/enable': self.on_enable,
+            '/disable': self.on_disable,
+            '/catchable': self.on_catchable,
+            '/start': self.on_start,
+            '/list': self.on_list,
+            '/add': self.on_add,
+            '/del': self.on_del,
+            '/help': self.on_help
+        }
+        
+        self.markup_location = ReplyKeyboardMarkup(keyboard=[
+            [KeyboardButton(text='Enviar localização', request_location=True)],
+        ], resize_keyboard=True)
+        
+        self.markup_hide = ReplyKeyboardHide(hide_keyboard=True)
+        
     def run(self):
         while True:
             try:
@@ -29,176 +46,185 @@ class BotThread(Thread):
                 
     def on_message(self, message):       
         chat_id = message['chat']['id']
-        
-        markup_location = ReplyKeyboardMarkup(keyboard=[
-            [KeyboardButton(text='Enviar localização', request_location=True)],
-        ], resize_keyboard=True)
-        
-        markup_hide = ReplyKeyboardHide(hide_keyboard=True)
-        
+              
         log.info('New message from %ld', chat_id)
         
         user, created = User.get_or_create(chat_id=chat_id)
         
         if created == True:
             self.add_default_pokemon(user)
-        
-        if 'text' in message:
-            if message['text'] == '/enable':
-                user.enabled = True
-                user.save()
-                self.telegram_bot.sendMessage(chat_id, 'Notificações ativadas. Envie sua localização.', reply_markup=markup_location)
-            elif message['text'] == '/disable':
-                user.enabled = False
-                user.save()
-                self.telegram_bot.sendMessage(chat_id, 'Notificações desativadas.', reply_markup=markup_hide)
-            elif message['text'] == '/catchable':
-                user.report_catchable = not user.report_catchable
-                user.save()
-                
-                if user.report_catchable:
-                    self.telegram_bot.sendMessage(chat_id, 'Você será notificado de todos os Pokémon próximos.')
-                else:
-                    self.telegram_bot.sendMessage(chat_id, 'Você só será notificado dos Pokemón na sua lista.')
-            elif message['text'] == '/start':
-                text = 'Olá. Eu sou o Eevee Robot, e eu posso te avisar se eu vir algum Pokémon raro.\n\n'
-                text += 'Para começar a receber notificações, basta usar o comando /enable e, em seguida, enviar a sua localização.\n\n'
-                text += 'Você pode ver os Pokémons que eu vou te alertar usando o comando /list, e você pode modificar essa lista usando os comandos /add e /del.\n\n'
-                text += 'Ah, e eu também posso te alertar se tiver algum Pokémon bem do seu ladinho, pra você não precisar ficar com o jogo aberto. É só usar o comando /catchable.\n\n'
-                text += 'Qualquer dúvida você pode usar o comando /help para saber mais sobre os comandos.\n\n'
-                text += 'Ao trabalho!'
-                
-                self.telegram_bot.sendMessage(chat_id, text)
-            elif message['text'] == '/list':
-                text = ''
-                
-                query = (UserAlert
-                        .select()
-                        .where(UserAlert.user == user)
-                        .order_by(UserAlert.pokemon_id))
-                
-                pokemons = [p.pokemon_id for p in query]
-                
-                if len(pokemons) == 0:
-                    text = 'Nenhum Pokémon encontrado.'
-                else:
-                    text = 'Você receberá notificações dos seguintes Pokémons:\n\n'
-                for p in pokemons:
-                    text += '#{} - {}\n'.format(p, get_pokemon_name(p))
-                
-                
-                    
-                self.telegram_bot.sendMessage(chat_id, text)
-            elif message['text'][:4] == '/add':
-                arg = message['text'][4:].strip()
-                text = ''
-                
-                pokemon_id = None
-                
-                if arg.isdigit():
-                    pokemon_id = int(arg)
-                    
-                    if not (1 <= pokemon_id <= 151):
-                        pokemon_id = None
-                else:
-                    pokemon_id = get_pokemon_id(arg)
-                    
-                if pokemon_id != None:
-                    try:
-                        UserAlert.create(user=user, pokemon_id=pokemon_id)
-                    except IntegrityError:
-                        pass
-                        
-                    text = '#{} - {} adicionado.'.format(pokemon_id, get_pokemon_name(pokemon_id))
-                else:
-                    if arg == 'all':
-                        self.add_all_pokemon(user)
-                        
-                        text = 'Todos os Pokémons foram adicionados.'
-                    else:
-                        if arg != None and arg != '':
-                            text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
-                        else:
-                            text = 'Comando inválido.\n\n'
-                            text += 'Uso:\n'
-                            text += '/add <nome ou # ou all>\n\n'
-                            text += 'Exemplo:\n'
-                            text += '/add Bulbasaur'
-                        
-                self.telegram_bot.sendMessage(chat_id, text)
-            elif message['text'][:4] == '/del':
-                arg = message['text'][4:].strip()
-                text = ''
-                
-                pokemon_id = None
-                
-                if arg.isdigit():
-                    pokemon_id = int(arg)
-                    
-                    if not (1 <= pokemon_id <= 151):
-                        pokemon_id = None
-                else:
-                    pokemon_id = get_pokemon_id(arg)
-                    
-                if pokemon_id != None:
-                    query = (UserAlert
-                            .delete()
-                            .where((UserAlert.user == user) &
-                                   (UserAlert.pokemon_id == pokemon_id)))
-                    
-                    if query.execute() == 0:
-                        text = '#{} - {} não estava na sua lista.'.format(pokemon_id, get_pokemon_name(pokemon_id))
-                    else:
-                        text = '#{} - {} removido.'.format(pokemon_id, get_pokemon_name(pokemon_id))
-                else:
-                    if arg == 'all':
-                        query = (UserAlert
-                                .delete()
-                                .where(UserAlert.user == user))
-                        
-                        query.execute()
-                        
-                        text = 'Todos os Pokémons foram removidos.'
-                    else:
-                        if arg != None and arg != '':
-                            text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
-                        else:
-                            text = 'Comando inválido.\n\n'
-                            text += 'Uso:\n'
-                            text += '/del <nome ou # ou all>\n\n'
-                            text += 'Exemplo:\n'
-                            text += '/del Bulbasaur'
-                    
-                self.telegram_bot.sendMessage(chat_id, text)
+            
+        if 'text' in message and len(message['text']) > 0:
+            args = message['text'].split()
+            
+            command = args[0]
+            args = args[1:]
+            
+            fn = self.routes.get(command)
+            if fn:
+                fn(user, command, *args)
             else:
-                text = ''
-                if message['text'] != '/help':
-                    text += 'Comando não reconhecido.\n\n'
-                text += '**Comandos disponíveis**\n\n'
-                text += '/help - mostrar essa mensagem de ajuda\n'
-                text += '/enable - ativar notificações\n'
-                text += '/disable - desativar notificações\n'
-                text += '/list - mostrar pokémons\n'
-                text += '/add <nome ou #> - adicionar pokémon\n'
-                text += '/del <nome ou # ou all> - remover pokémon\n'
-                text += '/catchable - ativar/desativar notificações de todos os pokémons alcançáveis\n'
-                
-                self.telegram_bot.sendMessage(chat_id, text, parse_mode='Markdown')
+                self.on_help(user, command, *args)
         
         if 'location' in message:
-            text = 'Localização atualizada.'
+            self.on_location(user, message['location'])
+            
+    def on_enable(self, user, command, *args):
+        user.enabled = True
+        user.save()
+        self.telegram_bot.sendMessage(user.chat_id, 'Notificações ativadas. Envie sua localização.', reply_markup=self.markup_location)
         
-            user.latitude = message['location']['latitude']
-            user.longitude = message['location']['longitude']
+    def on_disable(self, user, command, *args):
+        user.enabled = False
+        user.save()
+        self.telegram_bot.sendMessage(user.chat_id, 'Notificações desativadas.', reply_markup=self.markup_hide)
+    
+    def on_catchable(self, user, command, *args):
+        user.report_catchable = not user.report_catchable
+        user.save()
+        
+        if user.report_catchable:
+            self.telegram_bot.sendMessage(user.chat_id, 'Você será notificado de todos os Pokémon próximos.')
+        else:
+            self.telegram_bot.sendMessage(user.chat_id, 'Você só será notificado dos Pokemón na sua lista.')
             
-            if user.enabled == False:
-                user.enabled = True
-                text += '\nVocê receberá notificações.'
+    def on_list(self, user, command, *args):
+        text = ''
+        
+        query = (UserAlert
+                .select()
+                .where(UserAlert.user == user)
+                .order_by(UserAlert.pokemon_id))
+        
+        pokemons = [p.pokemon_id for p in query]
+        
+        if len(pokemons) == 0:
+            text = 'Nenhum Pokémon encontrado.'
+        else:
+            text = 'Você receberá notificações dos seguintes Pokémons:\n\n'
+        for p in pokemons:
+            text += '#{} - {}\n'.format(p, get_pokemon_name(p))
+
+        self.telegram_bot.sendMessage(user.chat_id, text)
+    
+    def on_add(self, user, command, *args):
+        if len(args) == 0:
+            text = 'Comando inválido.\n\n'
+            text += 'Uso:\n'
+            text += '/add <nome ou # ou all>\n\n'
+            text += 'Exemplo:\n'
+            text += '/add Bulbasaur'
+            self.telegram_bot.sendMessage(user.chat_id, text)
+            return
             
-            user.save()
+        if 'all' in args:
+            self.add_all_pokemon(user)
+            text = 'Todos os Pokémons foram adicionados.'
+            self.telegram_bot.sendMessage(user.chat_id, text)
+            return
             
-            self.telegram_bot.sendMessage(chat_id, text, reply_markup=markup_location)
-     
+        text = ''
+        
+        for arg in args:
+            if arg.isdigit():
+                pokemon_id = int(arg)
+                if not (1 <= pokemon_id <= 151):
+                    pokemon_id = None
+            else:
+                pokemon_id = get_pokemon_id(arg)
+        
+            if pokemon_id != None:
+                try:
+                    UserAlert.create(user=user, pokemon_id=pokemon_id)
+                except IntegrityError:
+                    pass
+                
+                text += '#{} - {} adicionado.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))               
+        
+        self.telegram_bot.sendMessage(user.chat_id, text.strip())
+        
+    def on_del(self, user, command, *args):
+        if len(args) == 0:
+            text = 'Comando inválido.\n\n'
+            text += 'Uso:\n'
+            text += '/del <nome ou # ou all>\n\n'
+            text += 'Exemplo:\n'
+            text += '/del Bulbasaur'
+            self.telegram_bot.sendMessage(user.chat_id, text)
+            return
+            
+        if 'all' in args:
+            query = (UserAlert
+                    .delete()
+                    .where(UserAlert.user == user))
+            
+            query.execute()
+            
+            text = 'Todos os Pokémons foram removidos.'
+            self.telegram_bot.sendMessage(user.chat_id, text)
+            return
+            
+        text = ''
+        
+        for arg in args:
+            if arg.isdigit():
+                pokemon_id = int(arg)
+                if not (1 <= pokemon_id <= 151):
+                    pokemon_id = None
+            else:
+                pokemon_id = get_pokemon_id(arg)
+        
+            if pokemon_id != None:
+                query = (UserAlert
+                        .delete()
+                        .where((UserAlert.user == user) &
+                               (UserAlert.pokemon_id == pokemon_id)))
+                    
+                if query.execute() == 0:
+                    text += '#{} - {} não estava na sua lista.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))
+                else:
+                    text += '#{} - {} removido.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))             
+        
+        self.telegram_bot.sendMessage(user.chat_id, text.strip())
+    
+    def on_start(self, user, command, *args):
+        text = 'Olá. Eu sou o Eevee Robot, e eu posso te avisar se eu vir algum Pokémon raro.\n\n'
+        text += 'Para começar a receber notificações, basta usar o comando /enable e, em seguida, enviar a sua localização.\n\n'
+        text += 'Você pode ver os Pokémons que eu vou te alertar usando o comando /list, e você pode modificar essa lista usando os comandos /add e /del.\n\n'
+        text += 'Ah, e eu também posso te alertar se tiver algum Pokémon bem do seu ladinho, pra você não precisar ficar com o jogo aberto. É só usar o comando /catchable.\n\n'
+        text += 'Qualquer dúvida você pode usar o comando /help para saber mais sobre os comandos.'
+        
+        self.telegram_bot.sendMessage(user.chat_id, text)
+        
+    def on_help(self, user, command, *args):
+        text = ''
+        if command != '/help':
+            text += 'Comando não reconhecido.\n\n'
+        text += '**Comandos disponíveis**\n\n'
+        text += '/help - mostrar essa mensagem de ajuda\n'
+        text += '/enable - ativar notificações\n'
+        text += '/disable - desativar notificações\n'
+        text += '/list - mostrar pokémons\n'
+        text += '/add <nome ou #> - adicionar pokémon\n'
+        text += '/del <nome ou # ou all> - remover pokémon\n'
+        text += '/catchable - ativar/desativar notificações de todos os pokémons alcançáveis\n'
+        
+        self.telegram_bot.sendMessage(user.chat_id, text, parse_mode='Markdown')
+        
+    def on_location(self, user, location):
+        text = 'Localização atualizada.'
+        
+        user.latitude = location['latitude']
+        user.longitude = location['longitude']
+        
+        if user.enabled == False:
+            user.enabled = True
+            text += '\nVocê receberá notificações.'
+        
+        user.save()
+        
+        self.telegram_bot.sendMessage(user.chat_id, text, reply_markup=self.markup_location)
+            
     def add_all_pokemon(self, user):
         values = [{'user': user, 'pokemon_id': id} for id in range(1, 152)]
         
