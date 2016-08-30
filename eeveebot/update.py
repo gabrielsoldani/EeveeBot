@@ -18,7 +18,7 @@ class UpdateThread(Thread):
         while True:
             try:
                 # Loop the queue
-                while True:
+                for x in range(5000):
                     message_type, message = self.queue.get()
                     
                     if message_type == 'pokemon':
@@ -35,6 +35,21 @@ class UpdateThread(Thread):
                         log.warning('Update queue is > 50 (@%d); try increasing --update-threads', self.queue.qsize())
                     
                     self.queue.task_done()
+                    
+                # Clean up expired sightings
+                log.info('Cleaning up expired sightings...')
+                self.app.seen_lock.acquire()
+                try:
+                    for message in self.app.seen:
+                        disappear_time = datetime.utcfromtimestamp(message['disappear_time'])
+                        seconds_left = (disappear_time - datetime.utcnow()).total_seconds()
+                        
+                        if seconds_left <= 0:
+                            self.app.seen.popitem()
+                        else:
+                            break
+                finally:
+                    self.app.seen_lock.release()
             except KeyboardInterrupt:
                 break
             except Exception as e:

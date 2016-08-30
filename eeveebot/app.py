@@ -1,6 +1,7 @@
 import logging
 import json
 
+from collections import OrderedDict
 from Queue import Queue
 from threading import Lock
 
@@ -21,7 +22,7 @@ class EeveeBot(Flask):
         super(EeveeBot, self).__init__(import_name, **kwargs)
         compress.init_app(self)
         
-        self.seen = {}
+        self.seen = OrderedDict()
         self.seen_lock = Lock()
         self.update_queue = Queue()
         self.alarm_queue = Queue()
