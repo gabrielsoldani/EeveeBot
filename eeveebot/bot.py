@@ -4,9 +4,11 @@ import logging
 from threading import Thread
 
 from .models import User, UserAlert
-from .utils import get_args, get_pokemon_name, get_pokemon_id
+from .utils import get_args, get_pokemon, get_pokemon_name
+
 import telepot
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardHide
+from peewee import IntegrityError
 
 log = logging.getLogger(__name__)
 
@@ -126,20 +128,17 @@ class BotThread(Thread):
         text = ''
         
         for arg in args:
-            if arg.isdigit():
-                pokemon_id = int(arg)
-                if not (1 <= pokemon_id <= 151):
-                    pokemon_id = None
-            else:
-                pokemon_id = get_pokemon_id(arg)
+            pokemon_id = get_pokemon(arg)
         
             if pokemon_id != None:
                 try:
                     UserAlert.create(user=user, pokemon_id=pokemon_id)
+                    text += '#{} - {} adicionado.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))
                 except IntegrityError:
-                    pass
-                
-                text += '#{} - {} adicionado.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))               
+                    text += '#{} - {} já estava na sua lista.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))
+            else:
+                text += '\'{}\' não corresponde a nenhum Pokémon.\n'.format(arg)
+                               
         
         self.telegram_bot.sendMessage(user.chat_id, text.strip())
         
@@ -167,12 +166,7 @@ class BotThread(Thread):
         text = ''
         
         for arg in args:
-            if arg.isdigit():
-                pokemon_id = int(arg)
-                if not (1 <= pokemon_id <= 151):
-                    pokemon_id = None
-            else:
-                pokemon_id = get_pokemon_id(arg)
+            pokemon_id = get_pokemon(arg)
         
             if pokemon_id != None:
                 query = (UserAlert
@@ -183,7 +177,9 @@ class BotThread(Thread):
                 if query.execute() == 0:
                     text += '#{} - {} não estava na sua lista.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))
                 else:
-                    text += '#{} - {} removido.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))             
+                    text += '#{} - {} removido.\n'.format(pokemon_id, get_pokemon_name(pokemon_id))
+            else:
+                text += '\'{}\' não corresponde a nenhum Pokémon.\n'.format(arg)
         
         self.telegram_bot.sendMessage(user.chat_id, text.strip())
     
@@ -205,7 +201,7 @@ class BotThread(Thread):
         text += '/enable - ativar notificações\n'
         text += '/disable - desativar notificações\n'
         text += '/list - mostrar pokémons\n'
-        text += '/add <nome ou #> - adicionar pokémon\n'
+        text += '/add <nome ou # ou all> - adicionar pokémon\n'
         text += '/del <nome ou # ou all> - remover pokémon\n'
         text += '/catchable - ativar/desativar notificações de todos os pokémons alcançáveis\n'
         
