@@ -90,3 +90,6 @@ ENV/
 
 # Config files
 config/*.ini
+
+# SQLite databases
+*.db
