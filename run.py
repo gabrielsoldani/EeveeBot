@@ -9,6 +9,7 @@ from eeveebot.utils import get_args
 from eeveebot.update import UpdateThread
 from eeveebot.alarm import AlarmThread
 from eeveebot.bot import BotThread
+from eeveebot.geocoder import GeocoderThread
 
 def main():
     args = get_args()
@@ -41,6 +42,10 @@ def main():
     bot_thread = BotThread(app)
     bot_thread.daemon = True
     bot_thread.start()
+    
+    geocoder_thread = GeocoderThread(app)
+    geocoder_thread.daemon = True
+    geocoder_thread.start()
     
     if args.verbose:
         app.run(threaded=True, use_reloader=False, debug=True, host=args.host, port=args.port)
