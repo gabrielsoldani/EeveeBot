@@ -13,7 +13,7 @@
 
 # Webserver settings
 #host:                  # address to listen on (default 127.0.0.1)
-#port:                  # port to listen on (default 5000)
+#port:                  # port to listen on (default 4000)
 #token:                 # URL to receive pokemon on ()
 
 # Uncomment a line when you want to change its default value (Remove # at the beginning)

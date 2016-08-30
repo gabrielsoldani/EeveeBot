@@ -40,7 +40,7 @@ def get_args():
                         help='Google Maps Geocode API Server Key')
     parser.add_argument('-H', '--host', default='127.0.0.1',
                         help='Set web server listening host')
-    parser.add_argument('-P', '--port', type=int, default=5000,
+    parser.add_argument('-P', '--port', type=int, default=4000,
                         help='Set web server listening port')
     parser.add_argument('-t', '--token',
                         help='Set web hook authentication token')
