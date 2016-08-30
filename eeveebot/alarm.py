@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 
 from threading import Thread
@@ -40,6 +41,12 @@ class AlarmThread(Thread):
         if hasattr(self.telegram_bot, method) == False:
             log.debug('Unsupported method %s', method)
             return
+            
+        # inject our keyboard
+        if method == 'sendMessage' and 'reply_markup' not in args:
+            args['reply_markup'] = ReplyKeyboardMarkup(keyboard=[
+                                [KeyboardButton(text='Enviar localização', request_location=True)],
+                             ], resize_keyboard=True)
          
         fn = getattr(self.telegram_bot, method)
     
