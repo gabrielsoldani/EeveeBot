@@ -45,7 +45,7 @@ class EeveeBot(Flask):
             'pokemon_id': 132,
             'latitude': -22.931950,
             'longitude': -43.247290,
-            'disappear_time': time.mktime(datetime.datetime.utcnow().timetuple()) + 42
+            'disappear_time': time.time() + 60+42
         }
         
         self.update_queue.put(('pokemon', message))

@@ -65,7 +65,11 @@ class User(BaseModel):
     chat_id = BigIntegerField(primary_key=True)
     latitude = DoubleField(null=True)
     longitude = DoubleField(null=True)
-    enabled = BooleanField(default=False)
+    enabled = BooleanField(default=False, index=True)
+    report_catchable = BooleanField(default=False, index=True)
+    
+    class Meta:
+        indexes = ((('latitude', 'longitude'), False),)
     
 class UserAlert(BaseModel):
     user = ForeignKeyField(User)

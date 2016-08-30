@@ -14,19 +14,16 @@ class AlarmThread(Thread):
         super(AlarmThread, self).__init__()
         self.app = app
         self.queue = app.alarm_queue
-        self.bot_client = telepot.Bot(args.telegram_key)
+        self.telegram_bot = telepot.Bot(args.telegram_key)
 
     def run(self):
         while True:
             try:
                 # Loop the queue
                 while True:
-                    chats, alarm = self.queue.get()
-                    
-                    log.info('New alarm!')
-                    log.info(alarm)
-                    
-                    self.bulk_send(chats, alarm)
+                    chats, method, args = self.queue.get()
+                                       
+                    self.bulk_send(chats, method, args)
                     
                     if self.queue.qsize() > 50:
                         log.warning('Alarm queue is > 50 (@%d); try increasing --alarm-threads', self.queue.qsize())
@@ -37,7 +34,15 @@ class AlarmThread(Thread):
             except Exception as e:
                 log.exception('Exception in AlarmThread: %s', e)
                 
-    def bulk_send(self, chats, alarm):   
+    def bulk_send(self, chats, method, args):
+        fn = None
+        
+        if hasattr(self.telegram_bot, method) == False:
+            log.debug('Unsupported method %s', method)
+            return
+         
+        fn = getattr(self.telegram_bot, method)
+    
         for chat_id in chats:
-            alarm['chat_id'] = chat_id
-            self.bot_client.sendVenue(**alarm)
+            args['chat_id'] = chat_id
+            fn(**args)
