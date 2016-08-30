@@ -79,6 +79,41 @@ class UpdateThread(Thread):
         self.process_pokemon_event(**pokemon_event)
         
     def process_pokemon_event(self, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
+        box = get_outer_square((latitude, longitude), 70)
+        
+        query = (User
+                 .select(User)
+                 .where(
+                    (User.enabled == True) &
+                    (User.report_catchable == True) &
+                    ((User.latitude >= box['min_latitude']) &
+                     (User.latitude <= box['max_latitude']) &
+                     (User.longitude >= box['min_longitude']) &
+                     (User.longitude <= box['max_longitude']))))
+                     
+        
+        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 70]
+        
+        chats_catchable = chats
+        
+        if len(chats) > 0:
+            args = {
+                'text': '<b>{} bem do seu lado!</b>\n{} restantes.'.format(pokemon_name, time_left),
+                'parse_mode': 'HTML'
+            }
+            
+            self.app.alarm_queue.put((chats, 'sendMessage', args))
+            
+            args = {
+                'title': pokemon_name,
+                'address': address or '',
+                'latitude': latitude,
+                'longitude': longitude,
+                'disable_notification': 'True'
+            }
+            
+            self.app.alarm_queue.put((chats, 'sendVenue', args))
+    
         box = get_outer_square((latitude, longitude), 200)
         
         query = (User
@@ -94,6 +129,7 @@ class UpdateThread(Thread):
         
         chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 200]
         
+        chats = [x for x in chats if x not in chats_catchable]
         
         if len(chats) > 0:
             args = {
@@ -112,26 +148,3 @@ class UpdateThread(Thread):
             }
             
             self.app.alarm_queue.put((chats, 'sendVenue', args))
-        
-        box = get_outer_square((latitude, longitude), 70)
-        
-        query = (User
-                 .select(User)
-                 .where(
-                    (User.enabled == True) &
-                    (User.report_catchable == True) &
-                    ((User.latitude >= box['min_latitude']) &
-                     (User.latitude <= box['max_latitude']) &
-                     (User.longitude >= box['min_longitude']) &
-                     (User.longitude <= box['max_longitude']))))
-                     
-        
-        chats = [user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 70]
-        
-        if len(chats) > 0:
-            args = {
-                'text': '<b>{} bem do seu lado!</b>\n{} restantes.'.format(pokemon_name, time_left),
-                'parse_mode': 'HTML'
-            }
-            
-            self.app.alarm_queue.put((chats, 'sendMessage', args))
