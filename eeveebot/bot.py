@@ -116,9 +116,9 @@ class BotThread(Thread):
                     else:
                         text = 'Comando inválido.\n\n'
                         text += 'Uso:\n'
-                        text += '/del <nome ou #>\n\n'
+                        text += '/add <nome ou #>\n\n'
                         text += 'Exemplo:\n'
-                        text += '/del Bulbasaur'
+                        text += '/add Bulbasaur'
                         
                 self.telegram_bot.sendMessage(chat_id, text)
             elif message['text'][:4] == '/del':
@@ -146,14 +146,23 @@ class BotThread(Thread):
                     else:
                         text = '#{} - {} removido.'.format(pokemon_id, get_pokemon_name(pokemon_id))
                 else:
-                    if arg != None and arg != '':
-                        text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
+                    if arg == 'all':
+                        query = (UserAlert
+                                .delete()
+                                .where(UserAlert.user == user))
+                        
+                        query.execute()
+                        
+                        text = 'Todos os Pokémons foram removidos.'
                     else:
-                        text = 'Comando inválido.\n\n'
-                        text += 'Uso:\n'
-                        text += '/add <nome ou #>\n\n'
-                        text += 'Exemplo:\n'
-                        text += '/add Bulbasaur'
+                        if arg != None and arg != '':
+                            text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
+                        else:
+                            text = 'Comando inválido.\n\n'
+                            text += 'Uso:\n'
+                            text += '/del <nome ou # ou all>\n\n'
+                            text += 'Exemplo:\n'
+                            text += '/del Bulbasaur'
                     
                 self.telegram_bot.sendMessage(chat_id, text)
             else:
@@ -166,7 +175,7 @@ class BotThread(Thread):
                 text += '/disable - desativar notificações\n'
                 text += '/list - mostrar pokémons\n'
                 text += '/add <nome ou #> - adicionar pokémon\n'
-                text += '/del <nome ou #> - remover pokémon\n'
+                text += '/del <nome ou # ou all> - remover pokémon\n'
                 text += '/catchable - ativar/desativar notificações de todos os pokémons alcançáveis\n'
                 
                 self.telegram_bot.sendMessage(chat_id, text, parse_mode='Markdown')
