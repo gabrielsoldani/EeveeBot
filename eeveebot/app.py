@@ -1,9 +1,10 @@
 import logging
+import json
 
 from Queue import Queue
 from threading import Lock
 
-from flask import Flask
+from flask import Flask, request
 from flask_compress import Compress
 
 from . import config
@@ -34,7 +35,17 @@ class EeveeBot(Flask):
         
         
     def post_update(self):
-        print 'Received update!'
+        log.debug('POST request received from %s.' % (request.remote_addr))
+        try:
+            data = json.loads(request.data)
+        except:
+            return ('', 204)
+
+        if ('message' in data and
+            'type' in data):
+            self.update_queue.put((data['type'], data['message']))
+        
+        return ('', 204)
     
     def test(self):
         import uuid
