@@ -36,7 +36,7 @@ def get_args():
     parser = configargparse.ArgParser(default_config_files=[configpath], auto_env_var_prefix='EEVEEBOT_')
     parser.add_argument('-tk', '--telegram-key', required=True,
                         help='Telegram Key')
-    parser.add_argument('-gk', '--gmaps-key', required=True,
+    parser.add_argument('-gk', '--gmaps-key',
                         help='Google Maps Geocode API Server Key')
     parser.add_argument('-H', '--host', default='127.0.0.1',
                         help='Set web server listening host')

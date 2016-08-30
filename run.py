@@ -43,9 +43,12 @@ def main():
     bot_thread.daemon = True
     bot_thread.start()
     
-    geocoder_thread = GeocoderThread(app)
-    geocoder_thread.daemon = True
-    geocoder_thread.start()
+    if args.gmaps_key:
+        geocoder_thread = GeocoderThread(app)
+        geocoder_thread.daemon = True
+        geocoder_thread.start()
+    else:
+        log.debug('No --gmaps-key, geocoder will not be enabled.')
     
     if args.verbose:
         app.run(threaded=True, use_reloader=False, debug=True, host=args.host, port=args.port)

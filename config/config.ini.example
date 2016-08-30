@@ -1,0 +1,20 @@
+# General settings
+#gmaps-key:             # your Google Maps Geocoding API Server Key
+#telegram-key:          # your Telegram Key
+
+# Database settings
+#db-type: sqlite        # sqlite (default) or mysql
+#db-name:               # required for mysql
+#db-user:               # required for mysql
+#db-pass:               # required for mysql
+#db-host:               # required for mysql
+#db-port:               # default 3306
+#db-max-connections:    # max connections
+
+# Webserver settings
+#host:                  # address to listen on (default 127.0.0.1)
+#port:                  # port to listen on (default 5000)
+#token:                 # URL to receive pokemon on ()
+
+# Uncomment a line when you want to change its default value (Remove # at the beginning)
+# telegram-key is required
