@@ -40,8 +40,8 @@ class UpdateThread(Thread):
                 log.info('Cleaning up expired sightings...')
                 self.app.seen_lock.acquire()
                 try:
-                    for message in self.app.seen:
-                        disappear_time = datetime.utcfromtimestamp(message['disappear_time'])
+                    for encounter_id in self.app.seen:
+                        disappear_time = datetime.utcfromtimestamp(self.app.seen[encounter_id])
                         seconds_left = (disappear_time - datetime.utcnow()).total_seconds()
                         
                         if seconds_left <= 0:
@@ -61,7 +61,7 @@ class UpdateThread(Thread):
             if self.app.seen.get(message['encounter_id']):
                 return
         
-            self.app.seen[message['encounter_id']] = True
+            self.app.seen[message['encounter_id']] = message['disappear_time']
         finally:
             self.app.seen_lock.release()
         
