@@ -19,5 +19,9 @@
 # Pokémon settings
 #default-pokemon:       # list of default pokémon
 
+# Telegram Channel Settings
+#telegram-channel:      # broadcast channel name
+#default-pokemon:       # list of pokémon to broadcast to channel
+
 # Uncomment a line when you want to change its default value (Remove # at the beginning)
 # telegram-key is required
