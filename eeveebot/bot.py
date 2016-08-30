@@ -111,14 +111,19 @@ class BotThread(Thread):
                         
                     text = '#{} - {} adicionado.'.format(pokemon_id, get_pokemon_name(pokemon_id))
                 else:
-                    if arg != None and arg != '':
-                        text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
+                    if arg == 'all':
+                        self.add_all_pokemon(user)
+                        
+                        text = 'Todos os Pokémons foram adicionados.'
                     else:
-                        text = 'Comando inválido.\n\n'
-                        text += 'Uso:\n'
-                        text += '/add <nome ou #>\n\n'
-                        text += 'Exemplo:\n'
-                        text += '/add Bulbasaur'
+                        if arg != None and arg != '':
+                            text = '\'{}\' não corresponde a nenhum Pokémon.'.format(arg)
+                        else:
+                            text = 'Comando inválido.\n\n'
+                            text += 'Uso:\n'
+                            text += '/add <nome ou # ou all>\n\n'
+                            text += 'Exemplo:\n'
+                            text += '/add Bulbasaur'
                         
                 self.telegram_bot.sendMessage(chat_id, text)
             elif message['text'][:4] == '/del':
@@ -193,7 +198,15 @@ class BotThread(Thread):
             user.save()
             
             self.telegram_bot.sendMessage(chat_id, text, reply_markup=markup_location)
-            
+     
+    def add_all_pokemon(self, user):
+        values = [{'user': user, 'pokemon_id': id} for id in range(1, 152)]
+        
+        query = (UserAlert
+                .insert_many(values))
+        
+        query.execute()
+     
     def add_default_pokemon(self, user):
         default_pokemon = [
             2, # Ivysaur
