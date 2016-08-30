@@ -234,84 +234,10 @@ class BotThread(Thread):
         query.execute()
      
     def add_default_pokemon(self, user):
-        default_pokemon = [
-            2, # Ivysaur
-            3, # Venusaur
-            5, # Charmeleon
-            6, # Charizard
-            8, # Wartortle
-            9, # Blastoise
-            12, # Butterfree
-            15, # Beedril
-            18, # Pidgeot
-            22, # Fearow
-            24, # Arbok
-            26, # Raichu
-            28, # Sandslash
-            31, # Nidoqueen
-            34, # Nidoking
-            36, # Clefable
-            38, # Ninetales
-            40, # Wigglytuff
-            44, # Gloom
-            45, # Vileplume
-            47, # Parasect
-            49, # Venomoth
-            51, # Dugtrio
-            53, # Persian
-            57, # Primeape
-            59, # Arcanine
-            62, # Poliwrath
-            64, # Kadabra
-            65, # Alakazam
-            67, # Machoke
-            68, # Machamp
-            70, # Weepinbell
-            71, # Victreebel
-            75, # Graveler
-            76, # Golem
-            78, # Rapidash
-            80, # Slowbro
-            82, # Magneton
-            87, # Dewgong
-            88, # Grimer
-            89, # Muk
-            91, # Cloyster
-            93, # Haunter
-            94, # Gengar
-            95, # Onix
-            97, # Hypno
-            99, # Kingler
-            101, # Electrode
-            103, # Exeggutor
-            105, # Marowak
-            106, # Hitmonlee
-            107, # Hitmonchan
-            108, # Lickitung
-            110, # Weezing
-            112, # Rhydon
-            113, # Chansey
-            117, # Seadra
-            121, # Starmie
-            123, # Scyther
-            124, # Jynx
-            125, # Electabuzz
-            126, # Magmar
-            130, # Gyarados
-            131, # Lapras
-            134, # Vaporeon
-            135, # Jolteon
-            136, # Flareon
-            137, # Porygon
-            139, # Omastar
-            141, # Kabutops
-            142, # Aerodactyl
-            143, # Snorlax
-            148, # Dragonair
-            149 # Dragonite
-        ]
+        if args.default_pokemon == None:
+            return
         
-        values = [{'user': user, 'pokemon_id': id} for id in default_pokemon]
+        values = [{'user': user, 'pokemon_id': id} for id in args.default_pokemon]
         
         query = (UserAlert
                 .insert_many(values))

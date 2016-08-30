@@ -38,6 +38,8 @@ def get_args():
                         help='Telegram Key')
     parser.add_argument('-gk', '--gmaps-key',
                         help='Google Maps Geocode API Server Key')
+    parser.add_argument('-dp', '--default-pokemon', action='append',
+                        help='Default Pokémon')
     parser.add_argument('-H', '--host', default='127.0.0.1',
                         help='Set web server listening host')
     parser.add_argument('-P', '--port', type=int, default=4000,
@@ -65,6 +67,17 @@ def get_args():
     parser.set_defaults(DEBUG=False)
     
     args = parser.parse_args()
+    
+    default_pokemon = set()
+    for pokemon in args.default_pokemon:
+        pokemon_id = get_pokemon(pokemon)
+        
+        if pokemon_id == None:
+            log.error('Unrecognized Pokémon %s', pokemon)
+        else:
+            default_pokemon.add(pokemon_id)
+    
+    args.default_pokemon = default_pokemon
     
     return args
     
@@ -413,3 +426,16 @@ pokemon_ids = {
 def get_pokemon_id(pokemon_name):
     pokemon_name = re.sub(r'\W+', '', pokemon_name).lower()
     return pokemon_ids.get(pokemon_name)
+    
+def get_pokemon(id_or_name):
+    id = None
+    
+    if id_or_name.isdigit():
+        id = int(id_or_name)
+    
+    if 1 <= id <= 151:
+        return id
+        
+    id = get_pokemon_id(id_or_name)
+    
+    return id

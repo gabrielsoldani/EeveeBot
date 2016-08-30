@@ -3,6 +3,8 @@ import logging
 
 from threading import Thread
 
+from peewee import IntegrityError
+
 from .utils import get_args, get_outer_square, get_pokemon_name, format_time_left, get_distance
 from .models import User, UserAlert, Location
 

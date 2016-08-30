@@ -16,5 +16,8 @@
 #port:                  # port to listen on (default 4000)
 #token:                 # URL to receive pokemon on ()
 
+# Pokémon settings
+#default-pokemon:       # list of default pokémon
+
 # Uncomment a line when you want to change its default value (Remove # at the beginning)
 # telegram-key is required
