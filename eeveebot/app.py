@@ -53,7 +53,8 @@ class EeveeBot(Flask):
         import time
             
         message = {
-            'encounter_id': uuid.uuid4(),
+            'spawnpoint_id': str(uuid.uuid4()),
+            'encounter_id': str(uuid.uuid4()),
             'pokemon_id': 149,
             'latitude': -22.931950,
             'longitude': -43.247290,

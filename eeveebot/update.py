@@ -42,8 +42,8 @@ class UpdateThread(Thread):
                 log.info('Cleaning up expired sightings...')
                 self.app.seen_lock.acquire()
                 try:
-                    for encounter_id in self.app.seen:
-                        disappear_time = datetime.utcfromtimestamp(self.app.seen[encounter_id])
+                    for key in self.app.seen:
+                        disappear_time = datetime.utcfromtimestamp(self.app.seen[key])
                         seconds_left = (disappear_time - datetime.utcnow()).total_seconds()
                         
                         if seconds_left <= 0:
@@ -60,10 +60,11 @@ class UpdateThread(Thread):
     def trigger_pokemon(self, message):   
         self.app.seen_lock.acquire()
         try:
-            if self.app.seen.get(message['encounter_id']):
+            key = str(message['spawnpoint_id']) + ':' + str(message['encounter_id'])
+            if self.app.seen.get(key):
                 return
         
-            self.app.seen[message['encounter_id']] = message['disappear_time']
+            self.app.seen[key] = message['disappear_time']
         finally:
             self.app.seen_lock.release()
         
