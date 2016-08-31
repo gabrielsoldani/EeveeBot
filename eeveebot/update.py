@@ -142,7 +142,7 @@ class UpdateThread(Thread):
         return chats
         
     def process_nearby_pokemon(self, dont, pokemon_id, pokemon_name, disappear_time, time_left, latitude, longitude, address=None, sublocality=None, locality=None):
-        box = get_outer_square((latitude, longitude), 200)
+        box = get_outer_square((latitude, longitude), 1000)
         
         query = (User
                  .select(User)
@@ -155,7 +155,7 @@ class UpdateThread(Thread):
                      (User.longitude >= box['min_longitude']) &
                      (User.longitude <= box['max_longitude']))))
         
-        chats = set(user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 200)
+        chats = set(user.chat_id for user in query if get_distance((user.latitude, user.longitude), (latitude, longitude)) <= 1000)
         chats -= dont
         
         if len(chats) == 0:
