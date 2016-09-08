@@ -10,6 +10,8 @@ import telepot
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardHide
 from peewee import IntegrityError
 
+from UniversalAnalytics import Tracker
+
 log = logging.getLogger(__name__)
 
 args = get_args()
@@ -18,6 +20,7 @@ class BotThread(Thread):
     def __init__(self, app):
         super(BotThread, self).__init__()
         self.app = app
+        self.tracking_id = args.tracking_id
         self.telegram_bot = telepot.Bot(args.telegram_key)
         
         self.routes = {
@@ -53,6 +56,10 @@ class BotThread(Thread):
         
         user, created = User.get_or_create(chat_id=chat_id)
         
+        tracker = None
+        if self.tracking_id:
+            tracker = Tracker.create(self.tracking_id, client_id = chat_id)
+        
         if created == True:
             self.add_default_pokemon(user)
             
@@ -62,6 +69,10 @@ class BotThread(Thread):
             command = args[0]
             args = args[1:]
             
+            if tracker:
+                if command[:1] == '/':
+                    tracker.send('pageview', command)
+            
             fn = self.routes.get(command)
             if fn:
                 fn(user, command, *args)
@@ -70,6 +81,9 @@ class BotThread(Thread):
         
         if 'location' in message:
             self.on_location(user, message['location'])
+            
+            if tracker:
+                tracker.send('pageview', '/location')
             
     def on_enable(self, user, command, *args):
         user.enabled = True
