@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from datetime import datetime
 from threading import Thread
 
 from .models import User, UserAlert
@@ -10,8 +11,6 @@ import telepot
 from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardHide
 from peewee import IntegrityError
 
-from UniversalAnalytics import Tracker
-
 log = logging.getLogger(__name__)
 
 args = get_args()
@@ -20,7 +19,6 @@ class BotThread(Thread):
     def __init__(self, app):
         super(BotThread, self).__init__()
         self.app = app
-        self.tracking_id = args.tracking_id
         self.telegram_bot = telepot.Bot(args.telegram_key)
         
         self.routes = {
@@ -55,49 +53,39 @@ class BotThread(Thread):
         log.info('New message from %ld', chat_id)
         
         user, created = User.get_or_create(chat_id=chat_id)
+        user.last_message = datetime.now()
         
-        tracker = None
-        if self.tracking_id:
-            tracker = Tracker.create(self.tracking_id, client_id = chat_id)
-        
-        if created == True:
-            self.add_default_pokemon(user)
+        try:
+            if created == True:
+                self.add_default_pokemon(user)
+                
+            if 'text' in message and len(message['text']) > 0:
+                args = message['text'].split()
+                
+                command = args[0]
+                args = args[1:]
+                
+                fn = self.routes.get(command)
+                if fn:
+                    fn(user, command, *args)
+                else:
+                    self.on_help(user, command, *args)
             
-        if 'text' in message and len(message['text']) > 0:
-            args = message['text'].split()
-            
-            command = args[0]
-            args = args[1:]
-            
-            if tracker:
-                if command[:1] == '/':
-                    tracker.send('pageview', command)
-            
-            fn = self.routes.get(command)
-            if fn:
-                fn(user, command, *args)
-            else:
-                self.on_help(user, command, *args)
-        
-        if 'location' in message:
-            self.on_location(user, message['location'])
-            
-            if tracker:
-                tracker.send('pageview', '/location')
+            if 'location' in message:
+                self.on_location(user, message['location'])
+        finally:
+            user.save()
             
     def on_enable(self, user, command, *args):
         user.enabled = True
-        user.save()
         self.telegram_bot.sendMessage(user.chat_id, 'Notificações ativadas. Envie sua localização.', reply_markup=self.markup_location)
         
     def on_disable(self, user, command, *args):
         user.enabled = False
-        user.save()
         self.telegram_bot.sendMessage(user.chat_id, 'Notificações desativadas.', reply_markup=self.markup_hide)
     
     def on_catchable(self, user, command, *args):
         user.report_catchable = not user.report_catchable
-        user.save()
         
         if user.report_catchable:
             self.telegram_bot.sendMessage(user.chat_id, 'Você será notificado de todos os Pokémon próximos.')
@@ -230,9 +218,7 @@ class BotThread(Thread):
         if user.enabled == False:
             user.enabled = True
             text += '\nVocê receberá notificações.'
-        
-        user.save()
-        
+                
         self.telegram_bot.sendMessage(user.chat_id, text, reply_markup=self.markup_location)
             
     def add_all_pokemon(self, user):

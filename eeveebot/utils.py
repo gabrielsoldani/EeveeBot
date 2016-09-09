@@ -38,8 +38,6 @@ def get_args():
                         help='Telegram Key')
     parser.add_argument('-gk', '--gmaps-key',
                         help='Google Maps Geocode API Server Key')
-    parser.add_argument('--tracking-id',
-                        help='Google Analytics Tracking ID')
     parser.add_argument('-tc', '--telegram-channel',
                         help='Telegram Channel name')
     parser.add_argument('-dp', '--default-pokemon', action='append',

@@ -1,5 +1,7 @@
 import logging
 
+from datetime import datetime
+
 from peewee import SqliteDatabase, Model, DoubleField, BooleanField, CharField, SmallIntegerField, BigIntegerField, DateTimeField, ForeignKeyField, CompositeKey, Proxy
 from playhouse.flask_utils import FlaskDB
 from playhouse.pool import PooledMySQLDatabase
@@ -67,6 +69,7 @@ class User(BaseModel):
     longitude = DoubleField(null=True)
     enabled = BooleanField(default=False, index=True)
     report_catchable = BooleanField(default=False, index=True)
+    last_message = DateTimeField(default=datetime.now)
     
     class Meta:
         indexes = ((('latitude', 'longitude'), False),)
